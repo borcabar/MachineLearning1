@@ -1,23 +1,155 @@
 ########################################################################
-
 ########################################################################
-
 #######################    Prediction Practice     #####################
-
 ########################################################################
-
 ########################################################################
 
 
 #    NO2 concentration
 
-#_____ Libraries ______________________________________________________
+## libraries -----------------------------------------------------------
+
+library(fpp2)
+library(ggplot2)
 library(readxl)
+library(lmtest) #contains coeftest function
+library(tseries) #contains adf.test function
 
 
 
-#_____Data upload_______________________________________________________
+## load dataset---------------------------------------------------------
 
 
 fdata <- read_excel("C:/Users/Amaya/Desktop/Big Data/ML1/prediccion/NO2.xls")
-str(fdata)
+
+#Convert to time series object
+fdata_ts <- ts(fdata$NO2,start = 1, frequency = 7)
+#for daily data
+autoplot(fdata_ts)
+
+
+#################################################################################
+## In-Sample and out-of-sample
+#################################################################################
+
+fdata_ts_TR <- subset(fdata_ts,end = length(fdata_ts)-7*4*4) 
+
+
+
+## Identification and fitting frocess -------------------------------------------------------------------------------------------------------
+autoplot(fdata_ts_TR)
+
+#Box-Cox transformation
+source("BoxCoxAlpha.R")
+Lambda1 <-Box.Cox.Alpha(fdata_ts_TR,7) 
+Lambda2 <-BoxCox.lambda(fdata_ts_TR) #other option
+fdata_ts_TR.bx <- BoxCox(fdata_ts_TR,Lambda1) #Choose one of the Lambdas
+autoplot(fdata_ts_TR.bx)
+
+#differentiation
+ggtsdisplay(fdata_ts_TR.bx,lag.max = 25)
+adf.test(fdata_ts_TR.bx, alternative = "stationary")
+nsdiffs(fdata_ts_TR.bx, m = 7) #number of seasonal differences
+fdata_ts_TR.bx.diff <- diff(fdata_ts_TR.bx, lag = 12, differences = 1)
+ndiffs(fdata_ts_TR.bx) #number of regular differences
+fdata_ts_TR.bx.diff <- diff(fdata_ts_TR.bx, lag = 1, differences = 1)
+ggtsdisplay(fdata_ts_TR.bx.diff,lag.max = 50) #differences contains the order of differentiation
+adf.test(fdata_ts_TR.bx.diff, alternative = "stationary")
+ndiffs(fdata_ts_TR.bx.diff)
+
+#ACF and PACF of the time series -> identify significant lags and order
+ggtsdisplay(fdata_ts_TR,lag.max = 25)
+#Fit model with estimated order
+arima.fit <- Arima(fdata_ts_TR,
+                   order=c(1,1,0),
+                   seasonal = list(order=c(1,1,1),period=7),
+                   lambda = Lambda1,
+                   include.constant = TRUE)
+
+#If residuals are not white noise, change order of ARMA
+ggtsdisplay(residuals(arima.fit),lag.max = 25)
+val.forecast_h1 <- fdata_ts*NA
+for (i in seq(length(fdata_ts_TR)+1,length(fdata_ts),1)){
+  arima.val <- Arima(
+    subset(fdata_ts, end = i-1), 
+    model = arima.fit,#previous fitted model
+    h=12 # h is the forecast horizon
+  )
+  val.forecast_h1[i] <- forecast(arima.val, h=12)$mean
+}
+#Plot series and forecast 
+autoplot(fdata_ts)+
+  forecast::autolayer(val.forecast_h1)+xlim(140,160)
+accuracy(val.forecast_h1,fdata_ts)
+summary(arima.fit) #summary of training errors and estimated coefficients
+
+
+summary(arima.fit) #summary of training errors and estimated coefficients
+coeftest(arima.fit) #statistical significance of estimated coefficients
+autoplot(arima.fit) #root plot
+#Check residuals
+checkresiduals(arima.fit)
+#If residuals are not white noise, change order of ARMA
+ggtsdisplay(residuals(arima.fit),lag.max = 25)
+#######
+
+
+#Check fitted
+autoplot(fdata_ts_TR, series = "Real")+
+  forecast::autolayer(arima.fit$fitted, series = "Fitted")
+
+
+#Perform future forecast
+y_est <- forecast(arima.fit, h=12)
+autoplot(y_est)
+
+
+#################################################################################
+## Validation error for h = 1
+#################################################################################
+#Obtain forecast for horizon = 1 using the trained parameters of the model
+val.forecast_h1 <- fdata_ts*NA
+for (i in seq(length(fdata_ts_TR)+1,length(fdata_ts),1)){
+  arima.val <- Arima(
+    subset(fdata_ts, end = i-1), 
+    model = arima.fit,#previous fitted model
+    h=12 # h is the forecast horizon
+  )
+  val.forecast_h1[i] <- forecast(arima.val, h=1)$mean
+}
+#Plot series and forecast 
+autoplot(fdata_ts)+
+  forecast::autolayer(val.forecast_h1)+xlim(140,160)
+
+#Compute validation errors
+accuracy(val.forecast_h1,fdata_ts)
+
+
+
+
+
+#################################################################################
+## Code from 4_4
+#################################################################################
+arima.fit <- Arima(fdata_ts_TR,
+                   order=c(0,2,0), 
+                   lambda = Lambda1,
+                   include.constant = TRUE)
+summary(arima.fit) #summary of training errors and estimated coefficients
+coeftest(arima.fit) #statistical significance of estimated coefficients
+autoplot(arima.fit) #root plot
+#Check residuals
+checkresiduals(arima.fit, bins = 100)
+#If residuals are not white noise, change order of ARMA
+ggtsdisplay(residuals(arima.fit),lag.max = 25)
+#######
+
+
+#Check  forecast
+autoplot(fdata_ts_TR, series = "Real")+
+  forecast::autolayer(arima.fit$fitted, series = "Fitted")
+
+
+#Perform future forecast
+y_est <- forecast(arima.fit, h=10)
+autoplot(y_est)
