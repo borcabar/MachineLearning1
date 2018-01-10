@@ -1,0 +1,6 @@
+# Dynamic Regression Model
+#
+# The core idea is to use an equation as 
+y[t]=c + B(w)/d(w)*x[t-b]+v[t]
+
+#Libro recomnedado: "Forecasting with Dynamic REgression Models". Alan Pankratz
