@@ -1,0 +1,2 @@
+# The idea is to develop an algorithm to forecast the behavior of the stock-market in order to make investment.
+#The ARIMA models fall short because the data from the very beginning is white noise
