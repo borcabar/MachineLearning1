@@ -1,6 +1,11 @@
 #Hello there, the intention of this text is to have the information about the different topics of the course 
 # in one only place. Mostly code and function in R
 
-# Analysis of the given data:
 
-The first approach to the data in
+# FORECAST
+
+# The aim is given the data of a time-series to calculate data we already don't know... mostly future information 
+# (forecast) but could be from the past.
+
+# ARIMA
+
