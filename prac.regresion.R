@@ -20,7 +20,7 @@ library(corrplot)
 source("plotModelDiagnosis.R")
 
 
-## LoadData 
+## LoadData from the file
 library(ISLR) #Load dataset library from Introduction to Statistical Learning book
 fdata = read.table("insurance.csv", sep = ";", header = TRUE, stringsAsFactors = FALSE)
 ?fdata #Description of the dataset
